@@ -167,18 +167,37 @@ function App() {
       <div className={`sidebar ${isMenuOpen ? "open" : ""}`}>
         <div className="sidebar-section">
           <ul>
-            <li className="sidebar-item active" onClick={() => { setQuery("home"); setSelectedVideo(null); }}>
-              <span className="sidebar-icon">🏠</span>
-              <span>Home</span>
-            </li>
-            <li className="sidebar-item" onClick={() => { setQuery("trending"); setSelectedVideo(null); }}>
-              <span className="sidebar-icon">🔥</span>
-              <span>Trending</span>
-            </li>
-            <li className="sidebar-item" onClick={() => { setQuery("subscriptions"); setSelectedVideo(null); }}>
-              <span className="sidebar-icon">📺</span>
-              <span>Subscriptions</span>
-            </li>
+          <li 
+  className={`sidebar-item ${query === "home" ? "active" : ""}`} 
+  onClick={() => { setQuery("home"); setSelectedVideo(null); }}
+>
+  <span className="sidebar-icon">🏠</span>
+  <span>Home</span>
+</li>
+
+<li 
+  className={`sidebar-item ${query === "trending" ? "active" : ""}`} 
+  onClick={() => { setQuery("trending"); setSelectedVideo(null); }}
+>
+  <span className="sidebar-icon">🔥</span>
+  <span>Trending</span>
+</li>
+
+<li 
+  className={`sidebar-item ${query === "subscriptions" ? "active" : ""}`} 
+  onClick={() => { setQuery("subscriptions"); setSelectedVideo(null); }}
+>
+  <span className="sidebar-icon">📺</span>
+  <span>Subscriptions</span>
+</li>
+
+<li 
+  className={`sidebar-item ${query === "library" ? "active" : ""}`} 
+  onClick={() => { setQuery("library"); setSelectedVideo(null); }}
+>
+  <span className="sidebar-icon">📚</span>
+  <span>Library</span>
+</li>
           </ul>
         </div>
         
@@ -212,7 +231,7 @@ function App() {
             <div className="line"></div>
             <div className="line"></div>
           </div>
-          <div className="logo" onClick={() => setSelectedVideo(null)}>
+          <div className="logo" onClick={() => {setQuery("home");setSelectedVideo(null)}}>
             <span className="logo-icon">▶</span>
             <span className="logo-text">MiniTube</span>
           </div>
