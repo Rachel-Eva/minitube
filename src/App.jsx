@@ -5,6 +5,8 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [query, setQuery] = useState("home"); // default
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [commentsByVideo, setCommentsByVideo] = useState({});
 
   const allVideos = {
     home: [
@@ -134,10 +136,30 @@ function App() {
     ]
   };
 
-  // Filter videos
+  // Build unique videos list for suggestions (no duplicates by id)
+  const uniqueVideos = React.useMemo(() => {
+    const map = new Map();
+    Object.values(allVideos).flat().forEach((v) => {
+      if (!map.has(v.id)) map.set(v.id, v);
+    });
+    return Array.from(map.values());
+  }, []);
+
+  // Filter videos for grid view
   const videos = allVideos[query].filter((video) =>
     video.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const suggestionsFor = (currentId) =>
+    uniqueVideos.filter(v => v.id !== currentId).slice(0, 12);
+
+  const addComment = (videoId, text) => {
+    if (!text.trim()) return;
+    setCommentsByVideo((prev) => {
+      const existing = prev[videoId] || [];
+      return { ...prev, [videoId]: [{ id: Date.now(), author: "You", text: text.trim() }, ...existing] };
+    });
+  };
 
   return (
     <div className={`app-wrapper ${isMenuOpen ? "menu-open" : ""}`}>
@@ -145,15 +167,15 @@ function App() {
       <div className={`sidebar ${isMenuOpen ? "open" : ""}`}>
         <div className="sidebar-section">
           <ul>
-            <li className="sidebar-item active" onClick={() => setQuery("home")}>
+            <li className="sidebar-item active" onClick={() => { setQuery("home"); setSelectedVideo(null); }}>
               <span className="sidebar-icon">🏠</span>
               <span>Home</span>
             </li>
-            <li className="sidebar-item" onClick={() => setQuery("trending")}>
+            <li className="sidebar-item" onClick={() => { setQuery("trending"); setSelectedVideo(null); }}>
               <span className="sidebar-icon">🔥</span>
               <span>Trending</span>
             </li>
-            <li className="sidebar-item" onClick={() => setQuery("subscriptions")}>
+            <li className="sidebar-item" onClick={() => { setQuery("subscriptions"); setSelectedVideo(null); }}>
               <span className="sidebar-icon">📺</span>
               <span>Subscriptions</span>
             </li>
@@ -163,7 +185,7 @@ function App() {
         <div className="sidebar-section">
           <h3 className="sidebar-title">Library</h3>
           <ul>
-            <li className="sidebar-item" onClick={() => setQuery("library")}>
+            <li className="sidebar-item" onClick={() => { setQuery("library"); setSelectedVideo(null); }}>
               <span className="sidebar-icon">📚</span>
               <span>Library</span>
             </li>
@@ -190,7 +212,7 @@ function App() {
             <div className="line"></div>
             <div className="line"></div>
           </div>
-          <div className="logo">
+          <div className="logo" onClick={() => setSelectedVideo(null)}>
             <span className="logo-icon">▶</span>
             <span className="logo-text">MiniTube</span>
           </div>
@@ -222,46 +244,138 @@ function App() {
         </div>
       </header>
 
-      {/* Video Grid */}
+      {/* Content */}
       <main className={`main-content ${isMenuOpen ? "shifted" : ""}`} onClick={() => setIsMenuOpen(false)}>
-        <div className="video-grid">
-          {videos.length > 0 ? (
-            videos.map((video) => (
-              <div key={video.id} className="video-card">
-                <div className="thumbnail-container">
-                  <img 
-                    src={video.thumbnail} 
-                    alt={video.title}
-                    className="video-thumbnail"
-                    onError={(e) => {
-                      e.target.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
-                    }}
-                  />
-                  <div className="video-duration">{video.duration}</div>
-                </div>
-                <div className="video-info">
-                  <div className="video-avatar">
-                    <span>👤</span>
+        {selectedVideo ? (
+          <div className="watch-layout">
+            <div className="watch-left">
+              <div className="player-wrapper">
+                <iframe
+                  src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1`}
+                  title={selectedVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+              <h1 className="watch-title">{selectedVideo.title}</h1>
+              <div className="watch-meta">
+                <div className="watch-channel-row">
+                  <div className="video-avatar"><span>👤</span></div>
+                  <div className="channel-info">
+                    <div className="channel-name">{selectedVideo.channel}</div>
+                    <div className="watch-stats-small">{selectedVideo.views} • {selectedVideo.timestamp}</div>
                   </div>
-                  <div className="video-details">
-                    <h3 className="video-title">{video.title}</h3>
-                    <p className="video-channel">{video.channel}</p>
-                    <p className="video-stats">
-                      {video.views} • {video.timestamp}
-                    </p>
+                  <div className="watch-actions">
+                    <button className="chip-btn">👍 Like</button>
+                    <button className="chip-btn">Share</button>
+                    <button className="chip-btn" onClick={() => setSelectedVideo(null)}>⬅ Back</button>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="no-results">
-              <span className="no-results-icon">🔍</span>
-              <h3>No videos found</h3>
-              <p>Try adjusting your search terms</p>
+
+              <div className="comments-section">
+                <h3 className="comments-title">Comments</h3>
+                <CommentComposer onSubmit={(text) => addComment(selectedVideo.id, text)} />
+                <CommentsList comments={commentsByVideo[selectedVideo.id] || []} />
+              </div>
             </div>
-          )}
-        </div>
+
+            <aside className="watch-right">
+              {suggestionsFor(selectedVideo.id).map((s) => (
+                <div key={s.id} className="suggestion-item" onClick={() => setSelectedVideo(s)}>
+                  <div className="suggestion-thumb-wrap">
+                    <img src={s.thumbnail} alt={s.title} onError={(e) => { e.target.src = `https://img.youtube.com/vi/${s.id}/hqdefault.jpg`; }} />
+                    <div className="video-duration">{s.duration}</div>
+                  </div>
+                  <div className="suggestion-info">
+                    <div className="suggestion-title">{s.title}</div>
+                    <div className="suggestion-meta">{s.channel} • {s.views}</div>
+                  </div>
+                </div>
+              ))}
+            </aside>
+          </div>
+        ) : (
+          <div className="video-grid">
+            {videos.length > 0 ? (
+              videos.map((video) => (
+                <div key={video.id} className="video-card" onClick={() => setSelectedVideo(video)}>
+                  <div className="thumbnail-container">
+                    <img 
+                      src={video.thumbnail} 
+                      alt={video.title}
+                      className="video-thumbnail"
+                      onError={(e) => {
+                        e.target.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+                      }}
+                    />
+                    <div className="video-duration">{video.duration}</div>
+                  </div>
+                  <div className="video-info">
+                    <div className="video-avatar">
+                      <span>👤</span>
+                    </div>
+                    <div className="video-details">
+                      <h3 className="video-title">{video.title}</h3>
+                      <p className="video-channel">{video.channel}</p>
+                      <p className="video-stats">
+                        {video.views} • {video.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="no-results">
+                <span className="no-results-icon">🔍</span>
+                <h3>No videos found</h3>
+                <p>Try adjusting your search terms</p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
+    </div>
+  );
+}
+
+function CommentComposer({ onSubmit }) {
+  const [text, setText] = useState("");
+  return (
+    <div className="comment-composer">
+      <div className="comment-avatar">👤</div>
+      <div className="comment-input-wrap">
+        <input 
+          className="comment-input" 
+          placeholder="Add a comment..." 
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { onSubmit(text); setText(""); } }}
+        />
+        <div className="comment-actions">
+          <button className="chip-btn" onClick={() => { setText(""); }}>Cancel</button>
+          <button className="chip-btn primary" onClick={() => { onSubmit(text); setText(""); }}>Comment</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentsList({ comments }) {
+  if (!comments.length) {
+    return <p className="no-comments">Be the first to comment</p>;
+  }
+  return (
+    <div className="comments-list">
+      {comments.map((c) => (
+        <div key={c.id} className="comment-item">
+          <div className="comment-avatar">👤</div>
+          <div className="comment-body">
+            <div className="comment-author">{c.author}</div>
+            <div className="comment-text">{c.text}</div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
